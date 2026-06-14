@@ -8,6 +8,7 @@ out
 # Build artifacts
 dist
 dist-ssr
+dist-verify
 dist-verify-rollback
 
 # Environment variables
@@ -24,6 +25,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+# AI assistants
+.claude
+.codex
 
 # Editor directories and files
 .vscode/*
