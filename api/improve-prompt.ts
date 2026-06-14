@@ -1,8 +1,10 @@
 import {
-  jsonResponse,
+  type ApiRequest,
+  type ApiResponse,
   readJsonBody,
   readJsonResponse,
   requireEnv,
+  sendJson,
 } from "./_utils";
 
 interface ImprovePromptRequest {
@@ -11,9 +13,13 @@ interface ImprovePromptRequest {
   model?: string;
 }
 
-export default async function handler(request: Request): Promise<Response> {
+export default async function handler(
+  request: ApiRequest,
+  apiResponse: ApiResponse,
+): Promise<void> {
   if (request.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, { status: 405 });
+    sendJson(apiResponse, 405, { error: "Method not allowed" });
+    return;
   }
 
   try {
@@ -21,10 +27,11 @@ export default async function handler(request: Request): Promise<Response> {
       await readJsonBody<ImprovePromptRequest>(request);
 
     if (!userPrompt?.trim() || !systemPrompt?.trim()) {
-      return jsonResponse({ error: "Prompt is required" }, { status: 400 });
+      sendJson(apiResponse, 400, { error: "Prompt is required" });
+      return;
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const openAiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${requireEnv("OPENAI_API_KEY")}`,
@@ -40,27 +47,28 @@ export default async function handler(request: Request): Promise<Response> {
       }),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      return jsonResponse(
-        { error: `OpenAI error: ${response.status}`, details: error },
-        { status: response.status },
-      );
+    if (!openAiResponse.ok) {
+      const error = await openAiResponse.text();
+      sendJson(apiResponse, openAiResponse.status, {
+        error: `OpenAI error: ${openAiResponse.status}`,
+        details: error,
+      });
+      return;
     }
 
     const data = await readJsonResponse<{
       choices?: Array<{ message?: { content?: string } }>;
-    }>(response);
+    }>(openAiResponse);
     const content = data?.choices?.[0]?.message?.content;
     if (!content) {
-      return jsonResponse({ error: "OpenAI returned an empty response" }, { status: 502 });
+      sendJson(apiResponse, 502, { error: "OpenAI returned an empty response" });
+      return;
     }
 
-    return jsonResponse({ content });
+    sendJson(apiResponse, 200, { content });
   } catch (error) {
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
-    );
+    sendJson(apiResponse, 500, {
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 }

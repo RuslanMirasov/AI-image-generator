@@ -1,8 +1,10 @@
 import {
-  jsonResponse,
+  type ApiRequest,
+  type ApiResponse,
   readJsonBody,
   readJsonResponse,
   requireEnv,
+  sendJson,
 } from "./_utils";
 
 interface RunpodGenerateRequest {
@@ -13,9 +15,13 @@ interface RunpodGenerateRequest {
   }>;
 }
 
-export default async function handler(request: Request): Promise<Response> {
+export default async function handler(
+  request: ApiRequest,
+  apiResponse: ApiResponse,
+): Promise<void> {
   if (request.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, { status: 405 });
+    sendJson(apiResponse, 405, { error: "Method not allowed" });
+    return;
   }
 
   try {
@@ -23,11 +29,12 @@ export default async function handler(request: Request): Promise<Response> {
       await readJsonBody<RunpodGenerateRequest>(request);
 
     if (!workflow || typeof workflow !== "object") {
-      return jsonResponse({ error: "Workflow is required" }, { status: 400 });
+      sendJson(apiResponse, 400, { error: "Workflow is required" });
+      return;
     }
 
     const endpointId = requireEnv("RUNPOD_ENDPOINT_ID");
-    const response = await fetch(`https://api.runpod.ai/v2/${endpointId}/run`, {
+    const runpodResponse = await fetch(`https://api.runpod.ai/v2/${endpointId}/run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -41,19 +48,19 @@ export default async function handler(request: Request): Promise<Response> {
       }),
     });
 
-    const data = await readJsonResponse<unknown>(response);
-    if (!response.ok) {
-      return jsonResponse(
-        { error: `RunPod error: ${response.status}`, details: data },
-        { status: response.status },
-      );
+    const data = await readJsonResponse<unknown>(runpodResponse);
+    if (!runpodResponse.ok) {
+      sendJson(apiResponse, runpodResponse.status, {
+        error: `RunPod error: ${runpodResponse.status}`,
+        details: data,
+      });
+      return;
     }
 
-    return jsonResponse(data);
+    sendJson(apiResponse, 200, data);
   } catch (error) {
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
-    );
+    sendJson(apiResponse, 500, {
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 }

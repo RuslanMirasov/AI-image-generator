@@ -1,19 +1,26 @@
-export const config = {
-  runtime: "nodejs",
-};
-
-export function readJsonBody<T>(request: Request): Promise<T> {
-  return request.json() as Promise<T>;
+export interface ApiRequest {
+  method?: string;
+  body?: unknown;
+  query?: Record<string, string | string[] | undefined>;
 }
 
-export function jsonResponse(data: unknown, init?: ResponseInit): Response {
-  return new Response(JSON.stringify(data), {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
-  });
+export interface ApiResponse {
+  status(code: number): ApiResponse;
+  json(data: unknown): void;
+  setHeader?(name: string, value: string): void;
+}
+
+export function readJsonBody<T>(request: ApiRequest): Promise<T> {
+  if (typeof request.body === "string") {
+    return Promise.resolve(JSON.parse(request.body) as T);
+  }
+
+  return Promise.resolve((request.body || {}) as T);
+}
+
+export function sendJson(response: ApiResponse, status: number, data: unknown): void {
+  response.setHeader?.("Content-Type", "application/json");
+  response.status(status).json(data);
 }
 
 export async function readJsonResponse<T>(response: Response): Promise<T | null> {
