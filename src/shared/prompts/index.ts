@@ -13,7 +13,7 @@ export const CHANGE_DESCRIPTION_PROMPT = `
 
 export const WEBTOON_NEGATIVE_PROMPT = `
   blurry, bad anatomy, bad hands, ugly, low quality, worst quality, low resolution, watermark,
-  signature, extra fingers, missing fingers, bad hands, deformed hands, mutated hands, extra limbs
+  signature, extra fingers, missing fingers, bad hands, deformed hands, mutated hands
 `;
 
 export const GENERETE_IMAGE_PROMPT = `
